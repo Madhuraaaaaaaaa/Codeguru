@@ -9,9 +9,9 @@ export default function Landing() {
 		setIsVisible(true);
 	}, []);
 
-	const handleGetStarted = () => {
-		window.location.href = "/api/login";
-	};
+  const handleGetStarted = () => {
+    window.location.href = "/signin";
+  };
 
 	const handleWatchDemo = () => {
 		// Placeholder for demo functionality

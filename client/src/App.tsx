@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
+import SignIn from "@/pages/signin";
 import Dashboard from "@/pages/dashboard";
 import CodePreview from "@/pages/code-preview";
 import BackendBuilder from "@/pages/backend-builder";
@@ -41,24 +42,13 @@ function Router() {
 
   return (
     <Switch>
+      <Route path="/signin" component={SignIn} />
       <Route path="/" component={Landing} />
-      {!isAuthenticated ? (
-        <>
-          <Route path="/dashboard" component={Dashboard} />
-          <Route path="/ai-output" component={AIOutput} />
-          <Route path="/code-preview" component={CodePreview} />
-          <Route path="/backend-builder" component={BackendBuilder} />
-          <Route path="/deploy" component={Deploy} />
-        </>
-      ) : (
-        <>
-          <Route path="/dashboard" component={Dashboard} />
-          <Route path="/ai-output" component={AIOutput} />
-          <Route path="/code-preview" component={CodePreview} />
-          <Route path="/backend-builder" component={BackendBuilder} />
-          <Route path="/deploy" component={Deploy} />
-        </>
-      )}
+      <Route path="/dashboard" component={Dashboard} />
+      <Route path="/ai-output" component={AIOutput} />
+      <Route path="/code-preview" component={CodePreview} />
+      <Route path="/backend-builder" component={BackendBuilder} />
+      <Route path="/deploy" component={Deploy} />
       <Route component={NotFound} />
     </Switch>
   );
