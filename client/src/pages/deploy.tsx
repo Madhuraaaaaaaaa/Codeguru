@@ -1,0 +1,642 @@
+import { useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Navigation } from "@/components/ui/navigation";
+import { useToast } from "@/hooks/use-toast";
+import {
+  ArrowLeft,
+  Rocket,
+  CheckCircle,
+  ExternalLink,
+  Settings,
+  Clock,
+  Globe,
+  Activity,
+  Zap,
+  Shield,
+  Plus,
+  Trash2,
+} from "lucide-react";
+import { useLocation } from "wouter";
+
+interface DeploymentProvider {
+  id: string;
+  name: string;
+  logo: string;
+  description: string;
+  pricing: string;
+  deployTime: string;
+  selected: boolean;
+  recommended?: boolean;
+}
+
+interface Deployment {
+  id: string;
+  type: string;
+  date: string;
+  status: 'live' | 'archived';
+  url?: string;
+  buildTime?: string;
+}
+
+interface EnvVar {
+  key: string;
+  value: string;
+}
+
+const deploymentProviders: DeploymentProvider[] = [
+  {
+    id: 'vercel',
+    name: 'Vercel',
+    logo: '▲',
+    description: 'Automatic deployments, global CDN, serverless functions',
+    pricing: 'Free Plan Available',
+    deployTime: '~30s deploy',
+    selected: true,
+    recommended: true,
+  },
+  {
+    id: 'netlify',
+    name: 'Netlify',
+    logo: 'N',
+    description: 'Git-based deployments, form handling, edge functions',
+    pricing: 'Free Plan Available',
+    deployTime: '~45s deploy',
+    selected: false,
+  },
+  {
+    id: 'aws',
+    name: 'AWS Amplify',
+    logo: 'AWS',
+    description: 'Scalable hosting, full AWS integration, custom domains',
+    pricing: 'Pay per use',
+    deployTime: '~2min deploy',
+    selected: false,
+  },
+];
+
+const initialDeploymentHistory: Deployment[] = [
+  {
+    id: '1',
+    type: 'Production Deploy',
+    date: 'Dec 15, 2023 at 2:30 PM',
+    status: 'live',
+    url: 'my-ai-website.vercel.app',
+  },
+  {
+    id: '2',
+    type: 'Preview Deploy',
+    date: 'Dec 14, 2023 at 4:15 PM',
+    status: 'archived',
+    buildTime: '31s',
+  },
+  {
+    id: '3',
+    type: 'Initial Deploy',
+    date: 'Dec 13, 2023 at 9:20 AM',
+    status: 'archived',
+    buildTime: '45s',
+  },
+];
+
+const projectStats = [
+  { label: 'Components', value: '3', icon: Activity },
+  { label: 'API Endpoints', value: '5', icon: Zap },
+  { label: 'Bundle Size', value: '2.3MB', icon: Settings },
+  { label: 'Performance', value: '98%', icon: Shield, accent: true },
+];
+
+export default function Deploy() {
+  const [, setLocation] = useLocation();
+  const { toast } = useToast();
+
+  // Load settings from localStorage or use defaults
+  const [projectName, setProjectName] = useState(() => {
+    const saved = localStorage.getItem('deploy-project-name');
+    return saved || 'my-ai-website';
+  });
+  const [customDomain, setCustomDomain] = useState(() => {
+    const saved = localStorage.getItem('deploy-custom-domain');
+    return saved || '';
+  });
+  const [environment, setEnvironment] = useState(() => {
+    const saved = localStorage.getItem('deploy-environment');
+    return saved || 'Production';
+  });
+  const [isDeploying, setIsDeploying] = useState(false);
+  const [selectedProvider, setSelectedProvider] = useState(() => {
+    const saved = localStorage.getItem('deploy-provider');
+    return saved || 'vercel';
+  });
+  const [envVars, setEnvVars] = useState<EnvVar[]>(() => {
+    const saved = localStorage.getItem('deploy-env-vars');
+    return saved ? JSON.parse(saved) : [
+      { key: 'NODE_ENV', value: 'production' },
+      { key: 'DATABASE_URL', value: '••••••••••••' },
+    ];
+  });
+  const [deploymentHistory, setDeploymentHistory] = useState<Deployment[]>(() => {
+    const saved = localStorage.getItem('deploy-history');
+    return saved ? JSON.parse(saved) : initialDeploymentHistory;
+  });
+
+  // Save project name to localStorage
+  const handleProjectNameChange = (value: string) => {
+    setProjectName(value);
+    localStorage.setItem('deploy-project-name', value);
+  };
+
+  // Save custom domain to localStorage
+  const handleCustomDomainChange = (value: string) => {
+    setCustomDomain(value);
+    localStorage.setItem('deploy-custom-domain', value);
+  };
+
+  // Save environment to localStorage
+  const handleEnvironmentChange = (value: string) => {
+    setEnvironment(value);
+    localStorage.setItem('deploy-environment', value);
+  };
+
+  // Save provider selection to localStorage
+  const handleProviderChange = (providerId: string) => {
+    setSelectedProvider(providerId);
+    localStorage.setItem('deploy-provider', providerId);
+  };
+
+  // Save environment variables to localStorage
+  const handleEnvVarsChange = (newEnvVars: Array<{ key: string; value: string }>) => {
+    setEnvVars(newEnvVars);
+    localStorage.setItem('deploy-env-vars', JSON.stringify(newEnvVars));
+  };
+
+  const handleDeploy = async () => {
+    console.log('🚀 CLIENT: Starting deployment process');
+    console.log('Selected provider:', selectedProvider);
+    console.log('Project name:', projectName);
+    console.log('Environment:', environment);
+
+    if (selectedProvider !== 'vercel') {
+      console.log('❌ CLIENT: Provider not supported:', selectedProvider);
+      toast({
+        title: "Provider Not Supported",
+        description: `${selectedProvider} deployment is not yet implemented. Please select Vercel.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsDeploying(true);
+    console.log('✅ CLIENT: Set deploying state to true');
+
+    try {
+      // Show initial deployment message
+      console.log('📢 CLIENT: Showing initial deployment toast');
+      toast({
+        title: "Starting Deployment",
+        description: "Preparing to deploy to Vercel...",
+      });
+
+      // Prepare request payload
+      const requestPayload = {
+        projectName,
+        customDomain,
+        environment,
+        envVars,
+        buildCommand: 'npm run build',
+        outputDir: 'dist'
+      };
+      console.log('📤 CLIENT: Prepared request payload:', JSON.stringify(requestPayload, null, 2));
+
+      // Call the Vercel deployment API
+      console.log('🌐 CLIENT: Making fetch request to /api/deploy/vercel');
+      const response = await fetch('/api/deploy/vercel', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestPayload),
+      });
+
+      console.log('📥 CLIENT: Received response');
+      console.log('Response status:', response.status);
+      console.log('Response ok:', response.ok);
+      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+
+      if (!response.ok) {
+        console.log('❌ CLIENT: Response not ok, reading error response');
+        const errorText = await response.text();
+        console.log('Error response text:', errorText);
+        let error;
+        try {
+          error = JSON.parse(errorText);
+        } catch (parseError) {
+          console.log('Failed to parse error as JSON:', parseError);
+          error = { message: errorText };
+        }
+        throw new Error(error.message || 'Failed to deploy to Vercel');
+      }
+
+      console.log('✅ CLIENT: Response ok, parsing JSON');
+      const result = await response.json();
+      console.log('📋 CLIENT: Parsed response:', JSON.stringify(result, null, 2));
+
+      // Show success message with actual deployment URL
+      console.log('🎉 CLIENT: Showing success toast');
+      toast({
+        title: "Deployment Successful!",
+        description: `Your website is now live at ${result.deploymentUrl}`,
+      });
+
+      // Update deployment history
+      const newDeployment: Deployment = {
+        id: result.deploymentId,
+        type: `${environment} Deploy`,
+        date: new Date().toLocaleString(),
+        status: 'live' as const,
+        url: result.deploymentUrl.replace('https://', ''),
+        buildTime: result.buildTime,
+      };
+
+      console.log('📝 CLIENT: Created new deployment record:', newDeployment);
+
+      // Add to deployment history and save to localStorage
+      const updatedHistory = [newDeployment, ...deploymentHistory];
+      setDeploymentHistory(updatedHistory);
+      localStorage.setItem('deploy-history', JSON.stringify(updatedHistory));
+
+      console.log('💾 CLIENT: Updated deployment history in localStorage');
+
+      // Open the deployment in a new tab
+      setTimeout(() => {
+        console.log('🔗 CLIENT: Opening deployment URL in new tab:', result.deploymentUrl);
+        window.open(result.deploymentUrl, '_blank');
+      }, 1000);
+
+    } catch (error) {
+      console.error("❌ CLIENT: Deployment error:", error);
+      console.error("Error type:", typeof error);
+      console.error("Error instanceof Error:", error instanceof Error);
+      if (error instanceof Error) {
+        console.error("Error message:", error.message);
+        console.error("Error stack:", error.stack);
+      }
+      toast({
+        title: "Deployment Failed",
+        description: error instanceof Error ? error.message : "Failed to deploy to Vercel",
+        variant: "destructive",
+      });
+    } finally {
+      console.log('🏁 CLIENT: Setting deploying state to false');
+      setIsDeploying(false);
+    }
+  };
+
+  const handleProviderSelect = (providerId: string) => {
+    handleProviderChange(providerId);
+    toast({
+      title: "Provider Selected",
+      description: `Switched to ${deploymentProviders.find(p => p.id === providerId)?.name}`,
+    });
+  };
+
+  const handleAddEnvVar = () => {
+    const newEnvVars = [...envVars, { key: '', value: '' }];
+    handleEnvVarsChange(newEnvVars);
+  };
+
+  const handleUpdateEnvVar = (index: number, field: 'key' | 'value', newValue: string) => {
+    const newEnvVars = envVars.map((envVar: EnvVar, i: number) =>
+      i === index ? { ...envVar, [field]: newValue } : envVar
+    );
+    handleEnvVarsChange(newEnvVars);
+  };
+
+  const handleRemoveEnvVar = (index: number) => {
+    const newEnvVars = envVars.filter((_: EnvVar, i: number) => i !== index);
+    handleEnvVarsChange(newEnvVars);
+  };
+
+  return (
+    <div className="min-h-screen bg-background">
+      <Navigation />
+
+      <div className="max-w-6xl mx-auto p-6">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center space-x-4">
+            <Button variant="ghost" onClick={() => setLocation('/backend-builder')} data-testid="button-back">
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back
+            </Button>
+            <h1 className="text-2xl font-bold text-foreground">Deploy</h1>
+          </div>
+          
+          <div className="flex items-center space-x-2 px-3 py-1.5 bg-green-100 text-green-700 rounded text-sm">
+            <CheckCircle className="w-4 h-4" />
+            <span>Ready to Deploy</span>
+          </div>
+        </div>
+
+        {/* Deployment Overview */}
+        <Card className="mb-6">
+          <CardHeader>
+            <div className="flex items-start justify-between">
+              <div>
+                <CardTitle className="text-2xl mb-2">Deploy Your Project</CardTitle>
+                <p className="text-muted-foreground">
+                  Deploy your AI-generated website to the cloud with one click. Choose from multiple hosting providers.
+                </p>
+              </div>
+              <div className="text-right">
+                <div className="text-2xl font-bold text-foreground">My Website</div>
+                <div className="text-sm text-muted-foreground">Last updated 2 minutes ago</div>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {/* Project Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              {projectStats.map((stat, index) => (
+                <div key={index} className="bg-background rounded-lg p-4 border border-border">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className={`text-2xl font-bold ${stat.accent ? 'text-accent' : 'text-foreground'}`}>
+                        {stat.value}
+                      </div>
+                      <div className="text-sm text-muted-foreground">{stat.label}</div>
+                    </div>
+                    <stat.icon className="w-5 h-5 text-muted-foreground" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Deployment Providers */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Choose Hosting Provider</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {deploymentProviders.map((provider) => (
+                  <div
+                    key={provider.id}
+                    className={`border rounded-lg p-4 cursor-pointer transition-colors ${
+                      selectedProvider === provider.id
+                        ? 'border-accent bg-accent/5'
+                        : 'border-border hover:border-accent'
+                    }`}
+                    onClick={() => handleProviderSelect(provider.id)}
+                    data-testid={`provider-${provider.id}`}
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center">
+                        <div className="w-8 h-8 bg-foreground text-background rounded flex items-center justify-center mr-3">
+                          <span className="font-bold text-sm">{provider.logo}</span>
+                        </div>
+                        <div>
+                          <div className="flex items-center">
+                            <span className="font-medium">{provider.name}</span>
+                            {provider.recommended && (
+                              <Badge variant="secondary" className="ml-2">Recommended</Badge>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <div className={`w-4 h-4 border-2 rounded-full ${
+                        selectedProvider === provider.id
+                          ? 'border-accent bg-accent'
+                          : 'border-border'
+                      }`}>
+                        {selectedProvider === provider.id && (
+                          <div className="w-2 h-2 bg-white rounded-full m-0.5"></div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-sm text-muted-foreground mb-3">
+                      {provider.description}
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-green-600 font-medium">{provider.pricing}</span>
+                      <span className="text-muted-foreground">{provider.deployTime}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Deployment Settings */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Deployment Settings</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Project Name
+                  </label>
+                  <Input
+                    type="text"
+                    value={projectName}
+                    onChange={(e) => handleProjectNameChange(e.target.value)}
+                    data-testid="input-project-name"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Custom Domain
+                  </label>
+                  <Input
+                    type="text"
+                    placeholder="yoursite.com (optional)"
+                    value={customDomain}
+                    onChange={(e) => handleCustomDomainChange(e.target.value)}
+                    data-testid="input-custom-domain"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    You can add a custom domain after deployment
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Environment
+                  </label>
+                  <select
+                    className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm"
+                    value={environment}
+                    onChange={(e) => handleEnvironmentChange(e.target.value)}
+                    data-testid="select-environment"
+                  >
+                    <option>Production</option>
+                    <option>Preview</option>
+                    <option>Development</option>
+                  </select>
+                </div>
+
+                {/* Environment Variables */}
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Environment Variables
+                  </label>
+                  <div className="bg-background border border-border rounded-lg p-3">
+                    <div className="flex items-center justify-between text-sm mb-2">
+                      <span className="font-medium">Variables ({envVars.length})</span>
+                      <Button 
+                        size="sm" 
+                        variant="ghost" 
+                        onClick={handleAddEnvVar}
+                        data-testid="button-add-env-var"
+                      >
+                        <Plus className="w-3 h-3 mr-1" />
+                        Add
+                      </Button>
+                    </div>
+                    <div className="space-y-2">
+                      {envVars.map((envVar: EnvVar, index: number) => (
+                        <div key={index} className="flex items-center space-x-2 text-xs">
+                          <input
+                            type="text"
+                            placeholder="KEY"
+                            value={envVar.key}
+                            onChange={(e) => handleUpdateEnvVar(index, 'key', e.target.value)}
+                            className="bg-muted px-2 py-1 rounded flex-1 text-xs"
+                          />
+                          <span>=</span>
+                          <input
+                            type={envVar.key.toLowerCase().includes('password') || envVar.key.toLowerCase().includes('secret') ? 'password' : 'text'}
+                            placeholder="value"
+                            value={envVar.value}
+                            onChange={(e) => handleUpdateEnvVar(index, 'value', e.target.value)}
+                            className="bg-muted px-2 py-1 rounded flex-1 text-xs"
+                          />
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleRemoveEnvVar(index)}
+                            className="h-6 w-6 p-0"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Build Settings */}
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Build Settings
+                  </label>
+                  <div className="bg-background border border-border rounded-lg p-3">
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Build Command</span>
+                        <code className="font-mono bg-muted px-2 py-1 rounded text-xs">npm run build</code>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Output Directory</span>
+                        <code className="font-mono bg-muted px-2 py-1 rounded text-xs">dist/</code>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Node Version</span>
+                        <code className="font-mono bg-muted px-2 py-1 rounded text-xs">18.x</code>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Deploy Button */}
+        <div className="mt-6 text-center">
+          <Button
+            className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-primary to-accent text-white rounded-lg font-semibold hover:opacity-90 transition-opacity text-lg"
+            onClick={handleDeploy}
+            disabled={isDeploying}
+            data-testid="button-deploy-now"
+          >
+            {isDeploying ? (
+              <>
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-3" />
+                Deploying...
+              </>
+            ) : (
+              <>
+                <Rocket className="w-5 h-5 mr-3" />
+                Deploy Now
+              </>
+            )}
+          </Button>
+          <p className="text-sm text-muted-foreground mt-2">
+            Your website will be live in under 60 seconds
+          </p>
+        </div>
+
+        {/* Previous Deployments */}
+        <Card className="mt-8">
+          <CardHeader>
+            <CardTitle>Deployment History</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {deploymentHistory.map((deployment: Deployment) => (
+                <div
+                  key={deployment.id}
+                  className="flex items-center justify-between p-4 bg-background rounded-lg border border-border"
+                  data-testid={`deployment-${deployment.id}`}
+                >
+                  <div className="flex items-center space-x-4">
+                    <div className={`w-2 h-2 rounded-full ${
+                      deployment.status === 'live' ? 'bg-green-500' : 'bg-gray-400'
+                    }`} />
+                    <div>
+                      <div className="font-medium text-sm">{deployment.type}</div>
+                      <div className="text-xs text-muted-foreground">{deployment.date}</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <Badge variant={deployment.status === 'live' ? 'default' : 'secondary'}>
+                      {deployment.status === 'live' ? 'Live' : 'Archived'}
+                    </Badge>
+                    {deployment.url ? (
+                      <button
+                        onClick={() => {
+                          // In a real app, this would open the actual deployment
+                          toast({
+                            title: "Opening Deployment",
+                            description: `Opening ${deployment.url} in a new tab`,
+                          });
+                          window.open(`https://${deployment.url}`, '_blank');
+                        }}
+                        className="text-accent hover:text-accent-foreground text-sm flex items-center hover:underline"
+                        data-testid={`link-${deployment.id}`}
+                      >
+                        {deployment.url}
+                        <ExternalLink className="w-3 h-3 ml-1" />
+                      </button>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">{deployment.buildTime}</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
