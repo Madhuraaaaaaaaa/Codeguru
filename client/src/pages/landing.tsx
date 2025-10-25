@@ -1,9 +1,10 @@
 import { Button } from "@/components/ui/button";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useState, useEffect } from "react";
 
 export default function Landing() {
 	const [isVisible, setIsVisible] = useState(false);
+	const [, setLocation] = useLocation();
 
 	useEffect(() => {
 		setIsVisible(true);
