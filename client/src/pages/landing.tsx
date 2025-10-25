@@ -10,7 +10,7 @@ export default function Landing() {
 	}, []);
 
   const handleGetStarted = () => {
-    window.location.href = "/signin";
+    setLocation("/signin");
   };
 
 	const handleWatchDemo = () => {
